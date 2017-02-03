@@ -2,3 +2,5 @@
 这只是个Android Studio的Module，不能独立运行。
 
 [ImageLoaderUse](https://github.com/niyueming/ImageLoaderUse.git)
+
+[Fresco](https://github.com/facebook/fresco.git)
