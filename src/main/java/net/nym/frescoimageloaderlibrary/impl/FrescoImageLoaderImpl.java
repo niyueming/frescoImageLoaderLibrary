@@ -15,16 +15,22 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Animatable;
 import android.net.Uri;
+import android.support.annotation.ColorInt;
+import android.support.annotation.ColorRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.facebook.drawee.backends.pipeline.Fresco;
+import com.facebook.drawee.backends.pipeline.PipelineDraweeController;
 import com.facebook.drawee.backends.pipeline.PipelineDraweeControllerBuilder;
 import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.drawee.controller.ControllerListener;
+import com.facebook.drawee.generic.GenericDraweeHierarchy;
 import com.facebook.drawee.generic.GenericDraweeHierarchyBuilder;
+import com.facebook.drawee.generic.RoundingParams;
+import com.facebook.drawee.interfaces.DraweeController;
 import com.facebook.drawee.view.SimpleDraweeView;
 import com.facebook.imagepipeline.backends.okhttp3.OkHttpImagePipelineConfigFactory;
 import com.facebook.imagepipeline.common.RotationOptions;
@@ -32,6 +38,7 @@ import com.facebook.imagepipeline.core.ImagePipelineConfig;
 import com.facebook.imagepipeline.image.ImageInfo;
 import com.facebook.imagepipeline.request.ImageRequestBuilder;
 
+import net.nym.imageloaderlibrary.operation.NImageDownloadListener;
 import net.nym.imageloaderlibrary.operation.NImageLoader;
 
 import okhttp3.OkHttpClient;
@@ -42,7 +49,7 @@ import okhttp3.OkHttpClient;
  * @time 15:54
  */
 
-public class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeView>{
+public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeView>{
     private static NImageLoader my;
 
     private FrescoImageLoaderImpl(Context context){
@@ -85,12 +92,196 @@ public class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeView>{
 
     @Override
     public void setImageURI(@NonNull SimpleDraweeView imageView, @Nullable String uri) {
-
+        imageView.setImageURI(uri);
     }
 
     @Override
     public void setImageURI(@NonNull SimpleDraweeView imageView, @Nullable Uri uri) {
+        imageView.setImageURI(uri);
+    }
 
+    @Override
+    public void setImageURI(@NonNull SimpleDraweeView imageView, @Nullable String uri, final NImageDownloadListener listener) {
+        DraweeController controller = initControllerBuilder().setOldController(imageView.getController())
+                .setControllerListener(new BaseControllerListener<ImageInfo>(){
+                    @Override
+                    public void onFailure(String id, Throwable throwable) {
+                        super.onFailure(id, throwable);
+                        listener.onFailure(throwable);
+                    }
+
+                    @Override
+                    public void onFinalImageSet(String id, ImageInfo imageInfo, Animatable animatable) {
+                        super.onFinalImageSet(id, imageInfo, animatable);
+                        try {
+                            listener.onSuccess(imageInfo,animatable);
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                })
+                .setUri(uri)
+                .build();
+        imageView.setController(controller);
+    }
+
+    @Override
+    public void setImageCorner(@NonNull SimpleDraweeView imageView, @Nullable Uri uri, float corner) {
+        setImageCornerWithBorder(imageView,uri,corner,-1,0);
+    }
+
+    @Override
+    public void setImageCornerWithBorder(@NonNull SimpleDraweeView imageView, @Nullable Uri uri, float corner, @ColorRes int borderColor, int borderWidth) {
+        checkAndSetHierarchy(imageView);
+
+        checkAndSetRoundingParams(imageView);
+
+        setCorner(imageView.getHierarchy(),corner);
+
+        if (borderColor > 0){
+            setBorder(imageView.getHierarchy(),imageView.getResources(),borderColor,borderWidth);
+        }
+
+        imageView.setImageURI(uri);
+    }
+
+    private void checkAndSetRoundingParams(@NonNull SimpleDraweeView imageView) {
+        if (imageView.getHierarchy().getRoundingParams() == null){
+            RoundingParams roundingParams = new RoundingParams();
+            imageView.getHierarchy().setRoundingParams(roundingParams);
+        }
+    }
+
+    /**
+     * @description 检测是否有Hierarchy，没有则生成一个
+     * @param imageView
+     */
+    private void checkAndSetHierarchy(@NonNull SimpleDraweeView imageView) {
+        if (imageView.getHierarchy() == null){
+            imageView.setHierarchy(initGenericDraweeHierarchyBuilder(imageView.getResources())
+                    .build()
+            );
+        }
+    }
+
+    /**
+     * @description 设置圆角角度
+     * @param hierarchy
+     * @param corner 角度，单位：弧度
+     */
+    private void setCorner(GenericDraweeHierarchy hierarchy,float corner){
+        hierarchy.getRoundingParams()
+                .setCornersRadius(corner);
+    }
+
+    /**
+     * @description 设置边框
+     * @param hierarchy
+     * @param resources
+     * @param borderColor 边框颜色
+     * @param borderWidth 边框宽度
+     */
+    private void setBorder(GenericDraweeHierarchy hierarchy,Resources resources,@ColorRes int borderColor, int borderWidth){
+        hierarchy.getRoundingParams()
+                .setBorder(resources.getColor(borderColor),borderWidth);
+    }
+
+    @Override
+    public void setImageCorner(@NonNull SimpleDraweeView imageView, @Nullable Uri uri,
+                               float topLeft,
+                               float topRight,
+                               float bottomRight,
+                               float bottomLeft) {
+        checkAndSetHierarchy(imageView);
+
+        checkAndSetRoundingParams(imageView);
+
+        imageView.getHierarchy().getRoundingParams().setCornersRadii(topLeft,topRight,bottomRight,bottomLeft);
+
+        imageView.setImageURI(uri);
+    }
+
+    @Override
+    public void setImageCircle(@NonNull SimpleDraweeView imageView, @Nullable Uri uri, float radius) {
+        checkAndSetHierarchy(imageView);
+
+        checkAndSetRoundingParams(imageView);
+
+        imageView.getHierarchy().getRoundingParams().setRoundAsCircle(true);
+
+        imageView.setImageURI(uri);
+    }
+
+    @Override
+    public void setImageCircleWithBorder(@NonNull SimpleDraweeView imageView, @Nullable Uri uri, float radius, @ColorRes int borderColor, int borderWidth) {
+        checkAndSetHierarchy(imageView);
+
+        checkAndSetRoundingParams(imageView);
+
+        imageView.getHierarchy().getRoundingParams().setRoundAsCircle(true);
+
+        if (borderColor > 0){
+            setBorder(imageView.getHierarchy(),imageView.getResources(),borderColor,borderWidth);
+        }
+
+        imageView.setImageURI(uri);
+    }
+
+    @Override
+    public void setImageAnimateURI(@NonNull SimpleDraweeView imageView, @Nullable String uri) {
+        DraweeController controller = initControllerBuilder()
+                .setImageRequest(initImageRequestBuilder(Uri.parse(uri)).build())
+                .setOldController(imageView.getController())
+                .build();
+        imageView.setController(controller);
+    }
+
+    @Override
+    public void setImageAnimateURI(@NonNull SimpleDraweeView imageView, @Nullable String uri,final NImageDownloadListener listener) {
+        DraweeController controller = initControllerBuilder()
+                .setImageRequest(initImageRequestBuilder(Uri.parse(uri)).build())
+                .setOldController(imageView.getController())
+                .setControllerListener(new BaseControllerListener<ImageInfo>(){
+                    @Override
+                    public void onFailure(String id, Throwable throwable) {
+                        super.onFailure(id, throwable);
+                        listener.onFailure(throwable);
+                    }
+
+                    @Override
+                    public void onFinalImageSet(String id, ImageInfo imageInfo, Animatable animatable) {
+                        super.onFinalImageSet(id, imageInfo, animatable);
+                        try {
+                            listener.onSuccess(imageInfo,animatable);
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                })
+                .build();
+        imageView.setController(controller);
+    }
+
+    @Override
+    public void startAnimate(@NonNull SimpleDraweeView imageView) {
+        if (imageView.getController() == null){
+            return;
+        }
+        Animatable animatable = imageView.getController().getAnimatable();
+        if (animatable != null){
+            animatable.start();
+        }
+    }
+
+    @Override
+    public void stopAnimate(@NonNull SimpleDraweeView imageView) {
+        if (imageView.getController() == null){
+            return;
+        }
+        Animatable animatable = imageView.getController().getAnimatable();
+        if (animatable != null){
+            animatable.stop();
+        }
     }
 
     @Override
