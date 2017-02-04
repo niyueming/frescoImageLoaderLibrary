@@ -34,10 +34,12 @@ import com.facebook.imagepipeline.backends.okhttp3.OkHttpImagePipelineConfigFact
 import com.facebook.imagepipeline.common.RotationOptions;
 import com.facebook.imagepipeline.core.ImagePipelineConfig;
 import com.facebook.imagepipeline.image.ImageInfo;
+import com.facebook.imagepipeline.request.ImageRequest;
 import com.facebook.imagepipeline.request.ImageRequestBuilder;
 
 import net.nym.imageloaderlibrary.operation.NImageDownloadListener;
 import net.nym.imageloaderlibrary.operation.NImageLoader;
+import net.nym.imageloaderlibrary.operation.NImageOptions;
 
 import okhttp3.OkHttpClient;
 
@@ -124,6 +126,48 @@ public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeVie
     }
 
     @Override
+    public void setImageURI(@NonNull SimpleDraweeView imageView, @Nullable Uri uri, NImageOptions options) {
+        if (imageView.getHierarchy() == null){
+            imageView.setHierarchy(initGenericDraweeHierarchyBuilder(imageView.getResources()).build());
+        }
+        GenericDraweeHierarchy hierarchy = imageView.getHierarchy();
+        if (options.getImageFailure() != null){
+            hierarchy.setFailureImage(options.getImageFailure());
+        }else {
+            hierarchy.setFailureImage(options.getImageResFailure());
+        }
+        if (options.getImagePlaceholder() != null){
+            hierarchy.setFailureImage(options.getImagePlaceholder());
+        }else {
+            hierarchy.setFailureImage(options.getImageResPlaceholder());
+        }
+        if (options.getImageRetry() != null){
+            hierarchy.setFailureImage(options.getImageRetry());
+        }else {
+            hierarchy.setFailureImage(options.getImageResRetry());
+        }
+        if (options.getImageProgressBar() != null){
+            hierarchy.setFailureImage(options.getImageProgressBar());
+        }else {
+            hierarchy.setFailureImage(options.getImageResProgressBar());
+        }
+
+        if (hierarchy.getRoundingParams() == null){
+            hierarchy.setRoundingParams(new RoundingParams());
+        }
+        hierarchy.getRoundingParams().setRoundAsCircle(options.isCircle());
+        if (!options.isCircle()){
+            if (options.getCornersRadii() != null){
+                hierarchy.getRoundingParams().setCornersRadii(options.getCornersRadii());
+            }
+        }
+
+        hierarchy.getRoundingParams().setBorder(options.getBorderColor(),options.getBorderWidth());
+
+        imageView.setImageURI(uri);
+    }
+
+    @Override
     public void setImageCorner(@NonNull SimpleDraweeView imageView, @Nullable Uri uri, float corner) {
         setImageCornerWithBorder(imageView,uri,corner,-1,0);
     }
@@ -136,7 +180,7 @@ public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeVie
 
         setCorner(imageView.getHierarchy(),corner);
 
-        if (borderColor > 0){
+        if (borderWidth > 0){
             setBorder(imageView.getHierarchy(),imageView.getResources(),borderColor,borderWidth);
         }
 
@@ -218,7 +262,7 @@ public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeVie
 
         imageView.getHierarchy().getRoundingParams().setRoundAsCircle(true);
 
-        if (borderColor > 0){
+        if (borderWidth > 0){
             setBorder(imageView.getHierarchy(),imageView.getResources(),borderColor,borderWidth);
         }
 
