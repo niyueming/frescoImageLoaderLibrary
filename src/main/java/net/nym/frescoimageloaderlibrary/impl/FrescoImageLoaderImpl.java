@@ -59,7 +59,7 @@ public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeVie
         Fresco.initialize(context.getApplicationContext(),config);
     }
 
-    public static NImageLoader getInstance(Context context){
+    public static NImageLoader<SimpleDraweeView> getInstance(Context context){
         if (my == null){
             synchronized (FrescoImageLoaderImpl.class){
                 if (my == null){
@@ -131,25 +131,25 @@ public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeVie
             imageView.setHierarchy(initGenericDraweeHierarchyBuilder(imageView.getResources()).build());
         }
         GenericDraweeHierarchy hierarchy = imageView.getHierarchy();
-        if (options.getImageFailure() != null){
-            hierarchy.setFailureImage(options.getImageFailure());
-        }else {
+        if (options.getImageResFailure() != 0){
             hierarchy.setFailureImage(options.getImageResFailure());
-        }
-        if (options.getImagePlaceholder() != null){
-            hierarchy.setFailureImage(options.getImagePlaceholder());
         }else {
-            hierarchy.setFailureImage(options.getImageResPlaceholder());
+            hierarchy.setFailureImage(options.getImageFailure());
         }
-        if (options.getImageRetry() != null){
-            hierarchy.setFailureImage(options.getImageRetry());
+        if (options.getImageResPlaceholder() != 0){
+            hierarchy.setPlaceholderImage(options.getImageResPlaceholder());
         }else {
-            hierarchy.setFailureImage(options.getImageResRetry());
+            hierarchy.setPlaceholderImage(options.getImagePlaceholder());
         }
-        if (options.getImageProgressBar() != null){
-            hierarchy.setFailureImage(options.getImageProgressBar());
+        if (options.getImageResRetry() != 0){
+            hierarchy.setRetryImage(options.getImageResRetry());
         }else {
-            hierarchy.setFailureImage(options.getImageResProgressBar());
+            hierarchy.setRetryImage(options.getImageRetry());
+        }
+        if (options.getImageResProgressBar() != 0){
+            hierarchy.setProgressBarImage(options.getImageResProgressBar());
+        }else {
+            hierarchy.setProgressBarImage(options.getImageProgressBar());
         }
 
         if (hierarchy.getRoundingParams() == null){
@@ -323,6 +323,23 @@ public final class FrescoImageLoaderImpl implements NImageLoader<SimpleDraweeVie
         Animatable animatable = imageView.getController().getAnimatable();
         if (animatable != null){
             animatable.stop();
+        }
+    }
+
+    @Override
+    public void toggleAnimate(@NonNull SimpleDraweeView imageView) {
+        if (imageView.getController() == null){
+            return;
+        }
+        Animatable animatable = imageView.getController().getAnimatable();
+        if (animatable == null){
+            return;
+        }
+
+        if (animatable.isRunning()){
+            animatable.stop();
+        }else {
+            animatable.start();
         }
     }
 
